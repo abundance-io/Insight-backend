@@ -1,0 +1,29 @@
+# docker-compose.yml
+version: '3.8'
+  
+services:
+  web:
+    build: .
+    command: bash -c 'while !</dev/tcp/db/5432; do sleep 1; done; poetry run uvicorn insight_backend.main:app --host 0.0.0.0 --reload'
+    volumes:
+      - .:/insight_backend
+    ports:
+      - 8008:8000
+    environment:
+      - DATABASE_URL=postgresql://insight:insight@db:5432/insight
+    depends_on:
+      - db
+        
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - 5432
+    environment:
+      - POSTGRES_USER=insight
+      - POSTGRES_PASSWORD=insight
+      - POSTGRES_DB=insight
+
+volumes:
+  postgres_data:
