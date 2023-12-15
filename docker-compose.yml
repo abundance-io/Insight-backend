@@ -11,6 +11,7 @@ services:
       - 8008:8000
     environment:
       - DATABASE_URL=postgresql://insight:insight@db:5432/insight
+      - JWT_SECRET_KEY=INSIGHTSUPERSECRETKEY
     depends_on:
       - db
         
