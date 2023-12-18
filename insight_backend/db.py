@@ -1,17 +1,30 @@
 import databases
 import ormar
 import sqlalchemy
+from enum import Enum
+from dotenv import load_dotenv
+import os
+from .models.user import UserRoles
 
-from .config import settings
+load_dotenv()
 
-database = databases.Database(settings.db_url)
+connection_url = os.environ.get("DATABASE_URL")
+
+database = databases.Database(connection_url)
 metadata = sqlalchemy.MetaData()
 
 
 class BaseMeta(ormar.ModelMeta):
-    metadata = metadata
     database = database
+    metadata = metadata
 
 
-engine = sqlalchemy.create_engine(settings.db_url)
-metadata.create_all(engine)
+class UserDB(ormar.Model):
+    class Meta(BaseMeta):
+        tablename = "users"
+
+    id: int = ormar.Integer(primary_key=True)
+    passkey: str = ormar.String(max_length=228, nullable=False)
+    telegram_id: str = ormar.String(max_length=100, unique=True, nullable=False)
+    is_username_id: bool = ormar.Boolean(default=True, nullable=False)
+    role: UserRoles = ormar.Enum(enum_class=UserRoles)

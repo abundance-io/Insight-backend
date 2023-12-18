@@ -1,5 +1,9 @@
 from pydantic import BaseModel
 
 
-class JwtBearer:
+class TokenBearer(BaseModel):
     token: str
+
+
+class TokenData(BaseModel):
+    telegram_id: str

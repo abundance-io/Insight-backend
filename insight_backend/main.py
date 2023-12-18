@@ -1,6 +1,6 @@
 # app/main.py
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from .routers.admin import admin_router
 from contextlib import asynccontextmanager
 from .db import database
