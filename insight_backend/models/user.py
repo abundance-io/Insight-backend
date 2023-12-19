@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from enum import Enum
+from typing import List, Optional
 
 
 class UserRoles(Enum):
@@ -13,6 +14,10 @@ class UserCred(BaseModel):
     telegram_id: str
 
 
+class UserBase(BaseModel):
+    telegram_id: str
+
+
 class User(BaseModel):
     class Config:
         orm_mode = True
@@ -21,3 +26,7 @@ class User(BaseModel):
     telegram_id: str
     is_username_id: bool
     role: UserRoles
+
+
+class UserList(BaseModel):
+    users: List[User]

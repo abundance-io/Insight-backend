@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI, Depends
 from .routers.admin import admin_router
+from .routers.creator import creator_router
 from contextlib import asynccontextmanager
 from .db import database
 
@@ -18,7 +19,8 @@ app = FastAPI(title="Insight Backend", lifespan=lifespan)
 
 @app.get("/")
 async def read_root():
-    return {"hello": "world"}
+    return {}
 
 
 app.include_router(admin_router)
+app.include_router(creator_router)
