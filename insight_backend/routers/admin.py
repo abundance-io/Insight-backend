@@ -3,8 +3,8 @@ from ormar.exceptions import NoMatch
 from fastapi import APIRouter, Depends
 from fastapi import HTTPException
 from ..models.auth import TokenData
-
-from ..models.user import User, UserCred, UserRoles, UserBase, UserList
+from ..models.course import Course
+from ..models.user import User, UserCred, UserRoles, UserList
 from ..utils.auth import (
     get_current_user,
     hash_password,
@@ -12,7 +12,7 @@ from ..utils.auth import (
     create_access_token,
     check_current_user_admin,
 )
-from ..db import UserDB
+from ..db import UserDB, CourseDB
 
 admin_router = APIRouter()
 router = admin_router
@@ -34,9 +34,28 @@ async def authentiticate_admin(credentials: UserCred):
         raise HTTPException(status_code=401, detail="passkey incorrect")
 
 
+# dev route todo! - remove in production
+@router.post("/dev/admin/create")
+async def create_admin(new_admin: User):
+    if new_admin.role == UserRoles.admin:
+        try:
+            new_admin.passkey = hash_password(new_admin.passkey)
+            admin = await UserDB(**new_admin.dict()).save()
+            return User(**admin.dict())
+        except Exception as e:
+            if type(e) == UniqueViolationError:
+                raise HTTPException(
+                    status_code=404, detail="telegram user already registered"
+                )
+            else:
+                raise HTTPException(status_code=500, detail="internal server Error")
+    else:
+        raise HTTPException(status_code=400, detail="user is not an admin")
+
+
 @router.post("/admin/create")
 async def create_admin(
-    new_admin: User, admin: User = Depends(check_current_user_admin)
+    new_admin: User, check_admin: User = Depends(check_current_user_admin)
 ):
     if new_admin.role == UserRoles.admin:
         try:
@@ -56,7 +75,7 @@ async def create_admin(
 
 @router.post("/admin/create/creator")
 async def create_creator(
-    new_creator: User, admin: User = Depends(check_current_user_admin)
+    new_creator: User, check_admin: User = Depends(check_current_user_admin)
 ):
     if new_creator.role == UserRoles.creator:
         try:
@@ -74,14 +93,14 @@ async def create_creator(
         raise HTTPException(status_code=400, detail="user is not a creator")
 
 
-@router.delete("/admin/creator")
+@router.delete("/admin/creator/{telegram_id}")
 async def delete_creator(
-    creator_del: UserBase, admin: User = Depends(check_current_user_admin)
+    telegram_id: str, check_admin: User = Depends(check_current_user_admin)
 ):
     try:
-        creator = await UserDB.objects.get(telegram_id=creator_del.telegram_id)
+        creator = await UserDB.objects.get(telegram_id=telegram_id)
         if creator.role == UserRoles.creator:
-            await UserDB.objects.delete(telegram_id=creator_del.telegram_id)
+            await UserDB.objects.delete(telegram_id=telegram_id)
             return {"detail": "creator deleted"}
         else:
             raise HTTPException(status_code=400, detail="user is not a creator")
@@ -89,12 +108,12 @@ async def delete_creator(
         raise HTTPException(status_code=400, detail="user does not exist")
 
 
-@router.get("/admin/creator")
+@router.get("/admin/creator/{telegram_id}")
 async def get_creator(
-    creator_get: UserBase, admin: User = Depends(check_current_user_admin)
+    telegram_id: str, check_admin: User = Depends(check_current_user_admin)
 ):
     try:
-        creator = await UserDB.objects.get(telegram_id=creator_get.telegram_id)
+        creator = await UserDB.objects.get(telegram_id=telegram_id)
         if creator.role == UserRoles.creator:
             return User(**creator.dict())
     except NoMatch:
@@ -102,7 +121,21 @@ async def get_creator(
 
 
 @router.get("/admin/creator/all")
-async def get_all_creators(admin: User = Depends(check_current_user_admin)):
+async def get_all_creators(check_admin: User = Depends(check_current_user_admin)):
     creators = await UserDB.objects.all(role=UserRoles.creator)
     creators = [User(**creator.dict()) for creator in creators]
     return UserList(**{"users": creators})
+
+
+@router.post("/admin/create/course/")
+async def create_course(
+    new_course: Course, check_admin: User = Depends(check_current_user_admin)
+):
+    try:
+        # remove spaces and make lower case
+        new_course.course_code = new_course.course_code.lower().replace(" ", "")
+        course = await CourseDB(**new_course.dict()).save()
+        return Course(**course.dict())
+
+    except UniqueViolationError:
+        raise HTTPException(status_code=400, detail="course already created")

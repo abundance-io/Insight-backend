@@ -14,10 +14,6 @@ class UserCred(BaseModel):
     telegram_id: str
 
 
-class UserBase(BaseModel):
-    telegram_id: str
-
-
 class User(BaseModel):
     class Config:
         orm_mode = True
