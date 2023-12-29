@@ -110,7 +110,7 @@ async def delete_creator(
         raise HTTPException(status_code=400, detail="user does not exist")
 
 
-@router.get("/admin")
+@router.get("/admin/")
 async def get_current_admin(check_admin: User = Depends(check_current_user_admin)):
     return check_admin
 
