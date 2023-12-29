@@ -14,6 +14,8 @@ from ..utils.auth import (
 )
 from ..db import UserDB, CourseDB
 
+##todo! very important - stop returning user passkeys
+
 admin_router = APIRouter()
 router = admin_router
 
@@ -106,6 +108,11 @@ async def delete_creator(
             raise HTTPException(status_code=400, detail="user is not a creator")
     except NoMatch:
         raise HTTPException(status_code=400, detail="user does not exist")
+
+
+@router.get("/admin")
+async def get_current_admin(check_admin: User = Depends(check_current_user_admin)):
+    return check_admin
 
 
 @router.get("/admin/creator/{telegram_id}")
