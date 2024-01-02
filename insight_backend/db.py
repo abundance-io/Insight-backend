@@ -20,6 +20,16 @@ class BaseMeta(ormar.ModelMeta):
     metadata = metadata
 
 
+class UserPendingDB(ormar.Model):
+    class Meta(BaseMeta):
+        tablename = "pending_users"
+
+    id: int = ormar.Integer(primary_key=True)
+    telegram_repr: str = ormar.String(max_length=100, unique=True, nullable=False)
+    is_username_repr: bool = ormar.Boolean(default=True, nullable=False)
+    role: UserRoles = ormar.Enum(enum_class=UserRoles)
+
+
 class CourseDB(ormar.Model):
     class Meta(BaseMeta):
         tablename = "courses"
@@ -37,6 +47,7 @@ class UserDB(ormar.Model):
     id: int = ormar.Integer(primary_key=True)
     passkey: str = ormar.String(max_length=228, nullable=False)
     telegram_id: str = ormar.String(max_length=100, unique=True, nullable=False)
-    is_username_id: bool = ormar.Boolean(default=True, nullable=False)
+    telegram_repr: str = ormar.String(max_length=100, unique=True, nullable=False)
+    is_username_repr: bool = ormar.Boolean(default=True, nullable=False)
     role: UserRoles = ormar.Enum(enum_class=UserRoles)
     courses: Optional[List[CourseDB]] = ormar.ManyToMany(CourseDB)

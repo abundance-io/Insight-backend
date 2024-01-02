@@ -9,6 +9,12 @@ class UserRoles(Enum):
     client = "client"
 
 
+class UserPending(BaseModel):
+    telegram_repr: str
+    is_username_repr: bool
+    role: UserRoles
+
+
 class UserCred(BaseModel):
     passkey: str
     telegram_id: str
@@ -20,9 +26,14 @@ class User(BaseModel):
 
     passkey: str
     telegram_id: str
-    is_username_id: bool
+    telegram_repr: str
+    is_username_repr: bool
     role: UserRoles
 
 
 class UserList(BaseModel):
     users: List[User]
+
+
+class UserPendingList(BaseModel):
+    users: List[UserPending]

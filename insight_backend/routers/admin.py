@@ -1,10 +1,17 @@
 from asyncpg.exceptions import UniqueViolationError
 from ormar.exceptions import NoMatch
 from fastapi import APIRouter, Depends
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 from ..models.auth import TokenData
 from ..models.course import Course
-from ..models.user import User, UserCred, UserRoles, UserList
+from ..models.user import (
+    User,
+    UserCred,
+    UserRoles,
+    UserList,
+    UserPending,
+    UserPendingList,
+)
 from ..utils.auth import (
     get_current_user,
     hash_password,
@@ -12,7 +19,7 @@ from ..utils.auth import (
     create_access_token,
     check_current_user_admin,
 )
-from ..db import UserDB, CourseDB
+from ..db import UserDB, CourseDB, UserPendingDB
 
 ##todo! very important - stop returning user passkeys
 
@@ -50,49 +57,10 @@ async def create_admin(new_admin: User):
                     status_code=404, detail="telegram user already registered"
                 )
             else:
+                print(e)
                 raise HTTPException(status_code=500, detail="internal server Error")
     else:
         raise HTTPException(status_code=400, detail="user is not an admin")
-
-
-@router.post("/admin/create")
-async def create_admin(
-    new_admin: User, check_admin: User = Depends(check_current_user_admin)
-):
-    if new_admin.role == UserRoles.admin:
-        try:
-            new_admin.passkey = hash_password(new_admin.passkey)
-            admin = await UserDB(**new_admin.dict()).save()
-            return User(**admin.dict())
-        except Exception as e:
-            if type(e) == UniqueViolationError:
-                raise HTTPException(
-                    status_code=404, detail="telegram user already registered"
-                )
-            else:
-                raise HTTPException(status_code=500, detail="internal server Error")
-    else:
-        raise HTTPException(status_code=400, detail="user is not an admin")
-
-
-@router.post("/admin/create/creator")
-async def create_creator(
-    new_creator: User, check_admin: User = Depends(check_current_user_admin)
-):
-    if new_creator.role == UserRoles.creator:
-        try:
-            new_creator.passkey = hash_password(new_creator.passkey)
-            admin = await UserDB(**new_creator.dict()).save()
-            return User(**admin.dict())
-        except Exception as e:
-            if type(e) == UniqueViolationError:
-                raise HTTPException(
-                    status_code=404, detail="telegram user already registered"
-                )
-            else:
-                raise HTTPException(status_code=500, detail="internal server Error")
-    else:
-        raise HTTPException(status_code=400, detail="user is not a creator")
 
 
 @router.delete("/admin/creator/{telegram_id}")
@@ -127,7 +95,7 @@ async def get_creator(
         raise HTTPException(status_code=400, detail="user does not exist")
 
 
-@router.get("/admin/creator/all")
+@router.get("/admin/creator/all/")
 async def get_all_creators(check_admin: User = Depends(check_current_user_admin)):
     creators = await UserDB.objects.all(role=UserRoles.creator)
     creators = [User(**creator.dict()) for creator in creators]
@@ -146,3 +114,49 @@ async def create_course(
 
     except UniqueViolationError:
         raise HTTPException(status_code=400, detail="course already created")
+
+
+@router.post("/admin/add/creator")
+async def add_creator(
+    pending_creator: UserPending, check_admin: User = Depends(check_current_user_admin)
+):
+    try:
+        if pending_creator.role == UserRoles.creator:
+            user = await UserPendingDB(**pending_creator.dict()).save()
+            return UserPending(**user.dict())
+        else:
+            raise HTTPException(status_code=400, detail="user is not a creator")
+    except UniqueViolationError:
+        raise HTTPException(status_code=400, detail="user is already pending")
+
+
+@router.post("/admin/add/admin")
+async def add_creator(
+    pending_admin: UserPending, check_admin: User = Depends(check_current_user_admin)
+):
+    try:
+        if pending_admin.role == UserRoles.admin:
+            user = await UserPendingDB(**pending_admin.dict()).save()
+            return UserPending(**user.dict())
+        else:
+            raise HTTPException(status_code=400, detail="user is not an admin")
+    except UniqueViolationError:
+        raise HTTPException(status_code=400, detail="user is already pending")
+
+
+@router.delete("/admin/remove/user/{telegram_repr}")
+async def remove_pending(
+    telegram_repr: str, check_admin: User = Depends(check_current_user_admin)
+):
+    try:
+        await UserPendingDB.objects.delete(telegram_repr=telegram_repr)
+        return {"detail": "pending user removed"}
+    except UniqueViolationError:
+        raise HTTPException(status_code=400, detail="user is not pending")
+
+
+@router.get("/admin/pending")
+async def get_pending_users(check_admin: User = Depends(check_current_user_admin)):
+    pending_users = await UserPendingDB.objects.all()
+    pending_users = [UserPending(**user.dict()) for user in pending_users]
+    return UserPendingList(**{"users": pending_users})
