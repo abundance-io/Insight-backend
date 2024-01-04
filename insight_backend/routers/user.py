@@ -3,7 +3,7 @@ from ormar.exceptions import NoMatch
 from fastapi import APIRouter, Depends
 from fastapi import HTTPException
 from ..models.auth import TokenData
-from ..models.course import Course
+from ..models.content import Course
 from ..models.user import User, UserCred, UserRoles, UserList, UserPending
 from ..utils.auth import (
     get_current_user,

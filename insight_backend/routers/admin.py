@@ -3,7 +3,7 @@ from ormar.exceptions import NoMatch
 from fastapi import APIRouter, Depends
 from fastapi import HTTPException, Response
 from ..models.auth import TokenData
-from ..models.course import Course
+from ..models.content import Course
 from ..models.user import (
     User,
     UserCred,
@@ -46,7 +46,7 @@ async def authentiticate_admin(credentials: UserCred):
 # dev route todo! - remove in production
 @router.post("/dev/admin/create")
 async def create_admin(new_admin: User):
-    if new_admin.role == UserRoles.admin:
+    if new_admin.role == UserRoles.admin: 
         try:
             new_admin.passkey = hash_password(new_admin.passkey)
             admin = await UserDB(**new_admin.dict()).save()
@@ -131,7 +131,7 @@ async def add_creator(
 
 
 @router.post("/admin/add/admin")
-async def add_creator(
+async def add_admin(
     pending_admin: UserPending, check_admin: User = Depends(check_current_user_admin)
 ):
     try:

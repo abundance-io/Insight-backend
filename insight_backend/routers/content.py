@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from ..db import CourseDB
 from ormar.exceptions import NoMatch
 from fastapi import APIRouter, Depends
-from ..models.course import Course, CourseList
+from ..models.content import Course, CourseList
 from fastapi import HTTPException
 
 
