@@ -12,7 +12,7 @@ from ..utils.auth import (
     create_access_token,
     check_current_user_admin,
 )
-from ..db import UserDB, CourseDB, UserPendingDB
+from ..db import CreatorsDB, UserDB, CourseDB, UserPendingDB
 
 
 user_router = APIRouter()
@@ -28,9 +28,13 @@ async def create_creator(new_user: User):
         if pending_user.role == new_user.role:
             try:
                 new_user.passkey = hash_password(new_user.passkey)
-                admin = await UserDB(**new_user.dict()).save()
+                user = await UserDB(**new_user.dict()).save()
+                if user.role == UserRoles.creator:
+                    #add creator profile
+                    profile =  CreatorsDB(user=user)
+                    await user.creator_profile.add(profile)
                 await UserPendingDB.objects.delete(telegram_repr=new_user.telegram_repr)
-                return User(**admin.dict())
+                return User(**user.dict())
             except Exception as e:
                 if type(e) == UniqueViolationError:
                     raise HTTPException(

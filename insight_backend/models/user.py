@@ -37,3 +37,5 @@ class UserList(BaseModel):
 
 class UserPendingList(BaseModel):
     users: List[UserPending]
+
+

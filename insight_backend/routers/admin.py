@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from fastapi import HTTPException, Response
 from ..models.auth import TokenData
 from ..models.content import Course
+from ..models.creator import CreatorProfile
 from ..models.user import (
     User,
     UserCred,
@@ -11,7 +12,7 @@ from ..models.user import (
     UserList,
     UserPending,
     UserPendingList,
-)
+    )
 from ..utils.auth import (
     get_current_user,
     hash_password,
@@ -19,7 +20,7 @@ from ..utils.auth import (
     create_access_token,
     check_current_user_admin,
 )
-from ..db import UserDB, CourseDB, UserPendingDB
+from ..db import CreatorsDB, UserDB, CourseDB, UserPendingDB
 
 ##todo! very important - stop returning user passkeys
 
@@ -160,3 +161,53 @@ async def get_pending_users(check_admin: User = Depends(check_current_user_admin
     pending_users = await UserPendingDB.objects.all()
     pending_users = [UserPending(**user.dict()) for user in pending_users]
     return UserPendingList(**{"users": pending_users})
+
+
+@router.post("/admin/assign/{creator_id}/{course_code}")
+async def assign_creator(creator_id:str,course_code:str, check_admin: User = Depends(check_current_user_admin)):
+    try:
+        course = await CourseDB.objects.get(course_code=course_code)
+        try:
+            creator = await UserDB.objects.get(telegram_id=creator_id)
+            
+            if(creator.role == UserRoles.creator):
+                creator_profile = await CreatorsDB.objects.get(user=creator)
+                try:
+                    await course.creators.get(id=creator_profile.id)
+                    raise HTTPException(detail="creator already assigned to course",status_code=400)
+                except NoMatch:
+                    await course.creators.add(creator_profile)
+                return CreatorProfile(**creator_profile.dict())
+            
+        except NoMatch:
+            raise HTTPException(status_code=404,detail="creator does not exist")
+    except NoMatch:
+        raise HTTPException(status_code=404, detail="course does not exist")
+
+
+## remove queries in many to many relationship not working
+@router.post("/admin/unassign/{creator_id}/{course_code}")
+async def unassign_creator(creator_id:str,course_code:str, check_admin: User = Depends(check_current_user_admin)):
+    try:
+        course = await CourseDB.objects.get(course_code=course_code)
+        
+        try:
+            creator = await UserDB.objects.get(telegram_id=creator_id)
+            
+            if(creator.role == UserRoles.creator):
+                creator_profile = await CreatorsDB.objects.get(user=creator)
+                
+                try:
+                    await creator_profile.courses.remove(course)
+                    return {"detail":"course unassigned from user"}
+                except NoMatch as e:
+                    raise HTTPException(detail="user is not assigned to course",status_code=400)
+            
+        except NoMatch:
+            raise HTTPException(status_code=404,detail="creator does not exist")
+    except NoMatch:
+        raise HTTPException(status_code=404, detail="course does not exist")
+    pass
+
+
+

@@ -1,3 +1,4 @@
+from ormar.exceptions import NoMatch
 from passlib.hash import bcrypt
 from jose import jwt
 from datetime import datetime, timedelta
@@ -5,12 +6,14 @@ import os
 from dotenv import load_dotenv
 from ..models.auth import TokenBearer, TokenData
 from fastapi import Request, HTTPException, Depends
-from ..db import UserDB
+from ..db import UserDB,CourseDB
 from ..models.user import User, UserRoles
 
 
 load_dotenv()
 JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+if not JWT_SECRET_KEY:
+    raise Exception("JWT KEY NOT SUPPLIED")
 
 
 def hash_password(unhashed: str) -> str:
@@ -35,6 +38,23 @@ async def get_current_user(request: Request) -> User:
             raise HTTPException(detail="invalid passkey", status_code=401)
     else:
         raise HTTPException(detail="no passkey", status_code=400)
+
+
+async def check_user_course_privileged(course_code:str,user:User=Depends(get_current_user)):
+    async def check_course():
+        try:
+            if user.role == UserRoles.admin:
+                return user
+            elif user.role == UserRoles.creator:
+                course = await CourseDB.objects.get(course_code=course_code)
+                # if course_code in courses:
+                #     return user
+            pass
+        except Exception as e:
+            if type(e) == NoMatch:
+                raise HTTPException(detail="user not privileged to modify course",status_code=400)
+            pass
+    pass
 
 
 def check_current_user_admin(user: User = Depends(get_current_user)) -> User:
